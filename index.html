@@ -70,10 +70,17 @@
         
         <button onclick="analyzeLog()">Analyze Log</button>
         
-        <div id="resultBox"></div>
+                <div id="resultBox"></div>
+        <div style="margin-top: 20px; border-top: 1px solid #ccc; padding-top: 15px;">
+        <h2>📋 Recent Tickets</h2>
+        <div id="historyList" style="font-family: monospace; font-size: 14px; color: #555;">
+            Loading history...
+        </div>
     </div>
+    </div>
+    
 
-    <script>
+        <script>
         async function analyzeLog() {
             const logText = document.getElementById('logInput').value;
             const resultBox = document.getElementById('resultBox');
@@ -90,36 +97,63 @@
             resultBox.innerText = "Querying TriangleAi Engine...";
 
             try {
-                // Call the Node.js backend we built!
-                const response = await fetch('http://localhost:3000/api/analyze', {
+                const response = await fetch('/api/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ logText: logText })
                 });
 
                 const data = await response.json();
-                
-                // Display the final JSON beautifully
                 resultBox.innerText = JSON.stringify(data, null, 2);
 
-                // --- FRONTEND COMPUTATIONAL THINKING ---
-                // Change the UI color based on the status the backend gave us
                 if (data.status.includes("CRITICAL")) {
-                    resultBox.style.backgroundColor = "#ffebee"; // Light red
+                    resultBox.style.backgroundColor = "#ffebee";
                     resultBox.style.borderColor = "red";
                 } else if (data.status.includes("NORMAL")) {
-                    resultBox.style.backgroundColor = "#fff9c4"; // Light yellow
+                    resultBox.style.backgroundColor = "#fff9c4";
                     resultBox.style.borderColor = "orange";
                 } else {
-                    resultBox.style.backgroundColor = "#e8f5e9"; // Light green
+                    resultBox.style.backgroundColor = "#e8f5e9";
                     resultBox.style.borderColor = "green";
                 }
 
             } catch (error) {
-                resultBox.innerText = "Error connecting to TriangleAi backend. Is server.js running?";
+                resultBox.innerText = "Error connecting to TriangleAi backend.";
                 resultBox.style.borderColor = "red";
             }
+            
+            // After analyzing, refresh the history box!
+            loadHistory();
         }
+
+        // KEEP THIS OUTSIDE THE analyzeLog FUNCTION
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/history');
+                const history = await response.json();
+                const historyDiv = document.getElementById('historyList');
+                
+                if (history.length === 0) {
+                    historyDiv.innerText = "No tickets analyzed yet.";
+                    return;
+                }
+
+                // Clear the old history so it doesn't duplicate
+                historyDiv.innerHTML = ""; 
+
+                // Reverse the array so newest tickets show first
+                history.slice(-5).reverse().forEach(ticket => {
+                    const color = ticket.status.includes("CRITICAL") ? "red" : 
+                                  ticket.status.includes("NORMAL") ? "orange" : "green";
+                    historyDiv.innerHTML += `<span style="color:${color}; font-weight:bold;">[${ticket.status.split(' - ')[0]}]</span> ${ticket.summary} <br><br>`;
+                });
+            } catch (error) {
+                console.error("History fetch error:", error);
+            }
+        }
+
+        // Load history the moment the page opens
+        loadHistory();
     </script>
 
 </body>
